@@ -94,6 +94,7 @@ TEST(Ilvis2ReaderTest, testReadDefault)
 }
 
 
+/**
 TEST(Ilvis2ReaderTest, testReadHigh)
 {
     Option filename("filename",
@@ -124,3 +125,4 @@ TEST(Ilvis2ReaderTest, testReadHigh)
              78.307512, -58.78459, 2956.667
             );
 }
+**/
