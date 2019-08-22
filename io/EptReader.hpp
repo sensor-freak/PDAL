@@ -38,12 +38,11 @@
 #include <memory>
 #include <mutex>
 
-#include <nlohmann/json.hpp>
-
+#include <pdal/JsonFwd.hpp>
+#include <pdal/Polygon.hpp>
 #include <pdal/Reader.hpp>
+#include <pdal/Streamable.hpp>
 #include <pdal/util/Bounds.hpp>
-
-#include <nlohmann/json.hpp>
 
 namespace pdal
 {
@@ -59,8 +58,9 @@ class EptInfo;
 class FixedPointLayout;
 class Key;
 class Pool;
+class GridPnp;
 
-class PDAL_DLL EptReader : public Reader
+class PDAL_DLL EptReader : public Reader, public Streamable
 {
     FRIEND_TEST(EptReaderTest, getRemoteType);
     FRIEND_TEST(EptReaderTest, getCoercedType);
@@ -90,17 +90,22 @@ private:
     void overlaps(const arbiter::Endpoint& ep, std::map<Key, uint64_t>& target,
             const NL::json& current, const Key& key);
 
-    uint64_t readLaszip(PointView& view, const Key& key, uint64_t nodeId) const;
-    uint64_t readBinary(PointView& view, const Key& key, uint64_t nodeId) const;
+    PointId readLaszip(PointView& view, const Key& key, uint64_t nodeId) const;
+    PointId readBinary(PointView& view, const Key& key, uint64_t nodeId) const;
     void process(PointView& view, PointRef& pr, uint64_t nodeId,
-            uint64_t pointId) const;
+        PointId pointId) const;
 
     void readAddon(PointView& dst, const Key& key, const Addon& addon,
-            uint64_t startId) const;
+        PointId startId) const;
 
     // To allow testing of hidden getRemoteType() and getCoercedType().
     static Dimension::Type getRemoteTypeTest(const NL::json& dimInfo);
     static Dimension::Type getCoercedTypeTest(const NL::json& dimInfo);
+
+    //For streamable pipeline.
+    virtual bool processOne(PointRef& point) override;
+    void loadNextOverlap();
+    void fillPoint(PointRef& point);
 
     std::string m_root;
 
@@ -129,6 +134,15 @@ private:
 
     Dimension::Id m_nodeIdDim = Dimension::Id::Unknown;
     Dimension::Id m_pointIdDim = Dimension::Id::Unknown;
+
+    // For streamable pipeline.
+    uint64_t m_nodeId = 1;
+    std::unique_ptr<PointTable> m_bufferPointTable;
+    PointViewPtr m_bufferPointView;
+    PointLayoutPtr m_bufferLayout;
+    point_count_t m_currentIndex = -1;
+    std::vector<char> m_temp_buffer;
+    std::vector<std::unique_ptr<GridPnp>> m_queryGrids;
 };
 
 } // namespace pdal
